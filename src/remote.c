@@ -265,6 +265,23 @@ void remotePacketProcessGEN(uint8_t i, char *packet)
 		_respond(REMOTE_RESP_OK,platform_srst_get_val());
 		break;
 
+    case REMOTE_SWCLK_SET:
+#ifdef PLATFORM_HAS_SWCLK_WIDTH
+		platform_set_swclk_width(strtoul(&packet[2], NULL, 10));
+		_respond(REMOTE_RESP_OK,0);
+#else
+		_respond(REMOTE_RESP_NOTSUP,0);
+#endif
+		break;
+
+    case REMOTE_SWCLK_GET:
+#ifdef PLATFORM_HAS_SWCLK_WIDTH
+		_respond(REMOTE_RESP_OK,platform_get_swclk_width());
+#else
+		_respond(REMOTE_RESP_NOTSUP,0);
+#endif
+		break;
+
     case REMOTE_PWR_SET:
 #ifdef PLATFORM_HAS_POWER_SWITCH
 		platform_target_set_power(packet[2]=='1');

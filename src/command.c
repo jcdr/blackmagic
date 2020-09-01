@@ -53,6 +53,9 @@ static bool cmd_morse(target *t, int argc, char **argv);
 static bool cmd_halt_timeout(target *t, int argc, const char **argv);
 static bool cmd_connect_srst(target *t, int argc, const char **argv);
 static bool cmd_hard_srst(target *t, int argc, const char **argv);
+#ifdef PLATFORM_HAS_SWCLK_WIDTH
+static bool cmd_swclk_width(target *t, int argc, const char **argv);
+#endif
 #ifdef PLATFORM_HAS_POWER_SWITCH
 static bool cmd_target_power(target *t, int argc, const char **argv);
 #endif
@@ -74,6 +77,9 @@ const struct command_s cmd_list[] = {
 	{"halt_timeout", (cmd_handler)cmd_halt_timeout, "Timeout (ms) to wait until Cortex-M is halted: (Default 2000)" },
 	{"connect_srst", (cmd_handler)cmd_connect_srst, "Configure connect under SRST: (enable|disable)" },
 	{"hard_srst", (cmd_handler)cmd_hard_srst, "Force a pulse on the hard SRST line - disconnects target" },
+#ifdef PLATFORM_HAS_SWCLK_WIDTH
+	{"swclk_width", (cmd_handler)cmd_swclk_width, "Minimal SWCLK positive width (ns) (Default 0: fast as possible)" },
+#endif
 #ifdef PLATFORM_HAS_POWER_SWITCH
 	{"tpwr", (cmd_handler)cmd_target_power, "Supplies power to the target: (enable|disable)"},
 #endif
@@ -343,6 +349,23 @@ static bool cmd_hard_srst(target *t, int argc, const char **argv)
 	platform_srst_set_val(false);
 	return true;
 }
+
+#ifdef PLATFORM_HAS_SWCLK_WIDTH
+static bool cmd_swclk_width(target *t, int argc, const char **argv)
+{
+	(void)t;
+	if (argc == 1) {
+		gdb_outf("SWCLK minimal positive width: %u\n", platform_get_swclk_width());
+	} else if (argc == 2) {
+		unsigned int width = strtoul(argv[1], NULL, 10);
+		platform_set_swclk_width(width);
+		gdb_outf("%u swclk width\n", width);
+	} else {
+		gdb_outf("Unrecognized command format\n");
+	}
+	return true;
+}
+#endif
 
 #ifdef PLATFORM_HAS_POWER_SWITCH
 static bool cmd_target_power(target *t, int argc, const char **argv)

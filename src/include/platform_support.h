@@ -42,6 +42,8 @@ const char *platform_target_voltage(void);
 int platform_hwversion(void);
 void platform_srst_set_val(bool assert);
 bool platform_srst_get_val(void);
+unsigned int platform_get_swclk_width(void);
+void platform_set_swclk_width(unsigned int width);
 bool platform_target_get_power(void);
 void platform_target_set_power(bool power);
 void platform_request_boot(void);
