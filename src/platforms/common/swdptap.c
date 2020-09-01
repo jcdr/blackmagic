@@ -23,6 +23,43 @@
 #include "general.h"
 #include "swdptap.h"
 
+#ifdef PLATFORM_HAS_SWCLK_WIDTH
+static unsigned int delay_turnaround = 0;
+static unsigned int delay_seq_in = 0;
+static unsigned int delay_seq_in_parity_loop = 0;
+static unsigned int delay_seq_in_parity_end = 0;
+static unsigned int delay_seq_out = 0;
+static unsigned int delay_seq_out_parity_loop = 0;
+static unsigned int delay_seq_out_parity_end = 0;
+
+void swdptap_set_delay(unsigned int turnaround,
+		       unsigned int seq_in,
+		       unsigned int seq_in_parity_loop,
+		       unsigned int seq_in_parity_end,
+		       unsigned int seq_out,
+		       unsigned int seq_out_parity_loop,
+		       unsigned int seq_out_parity_end)
+{
+	delay_turnaround = turnaround;
+	delay_seq_in = seq_in;
+	delay_seq_in_parity_loop = seq_in_parity_loop;
+	delay_seq_in_parity_end = seq_in_parity_end;
+	delay_seq_out = seq_out;
+	delay_seq_out_parity_loop = seq_out_parity_loop;
+	delay_seq_out_parity_end = seq_out_parity_end;
+}
+
+static void delay(unsigned int x) {
+	while(x--) {
+		asm("nop");
+	}
+}
+#define DELAY(x) delay(x);
+#else
+#define DELAY(x)
+#endif
+
+
 enum {
 	SWDIO_STATUS_FLOAT = 0,
 	SWDIO_STATUS_DRIVE
@@ -51,7 +88,10 @@ static void swdptap_turnaround(int dir)
 	if(dir == SWDIO_STATUS_FLOAT)
 		SWDIO_MODE_FLOAT();
 	gpio_set(SWCLK_PORT, SWCLK_PIN);
+#ifndef PLATFORM_HAS_SWCLK_WIDTH
 	gpio_set(SWCLK_PORT, SWCLK_PIN);
+#endif
+	DELAY(delay_turnaround);
 	gpio_clear(SWCLK_PORT, SWCLK_PIN);
 	if(dir == SWDIO_STATUS_DRIVE)
 		SWDIO_MODE_DRIVE();
@@ -71,6 +111,7 @@ static uint32_t swdptap_seq_in(int ticks)
 		if (res)
 			ret |= index;
 		index <<= 1;
+		DELAY(delay_seq_in);
 		gpio_clear(SWCLK_PORT, SWCLK_PIN);
 	}
 
@@ -97,6 +138,7 @@ static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 			res |= index;
 		}
 		index <<= 1;
+		DELAY(delay_seq_in_parity_loop);
 	}
 	gpio_clear(SWCLK_PORT, SWCLK_PIN);
 	int parity = __builtin_popcount(res);
@@ -104,6 +146,7 @@ static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 	gpio_set(SWCLK_PORT, SWCLK_PIN);
 	if (bit)
 		parity++;
+	DELAY(delay_seq_in_parity_end);
 	gpio_clear(SWCLK_PORT, SWCLK_PIN);
 #ifdef DEBUG_SWD_BITS
 	for (int i = 0; i < len; i++)
@@ -127,6 +170,7 @@ static void swdptap_seq_out(uint32_t MS, int ticks)
 		MS >>= 1;
 		data = MS & 1;
 		gpio_set(SWCLK_PORT, SWCLK_PIN);
+		DELAY(delay_seq_out);
 	}
 	gpio_clear(SWCLK_PORT, SWCLK_PIN);
 }
@@ -147,12 +191,17 @@ static void swdptap_seq_out_parity(uint32_t MS, int ticks)
 		gpio_set(SWCLK_PORT, SWCLK_PIN);
 		gpio_set_val(SWDIO_PORT, SWDIO_PIN, data);
 		MS >>= 1;
+		DELAY(delay_seq_out_parity_loop);
 		gpio_clear(SWCLK_PORT, SWCLK_PIN);
 	}
 	gpio_set_val(SWDIO_PORT, SWDIO_PIN, parity & 1);
 	gpio_clear(SWCLK_PORT, SWCLK_PIN);
+	DELAY(delay_seq_out_parity_loop);
 	gpio_set(SWCLK_PORT, SWCLK_PIN);
+#ifndef PLATFORM_HAS_SWCLK_WIDTH
 	gpio_set(SWCLK_PORT, SWCLK_PIN);
+#endif
+	DELAY(delay_seq_out_parity_end);
 	gpio_clear(SWCLK_PORT, SWCLK_PIN);
 }
 

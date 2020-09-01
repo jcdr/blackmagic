@@ -28,6 +28,16 @@ typedef struct swd_proc_s {
 } swd_proc_t;
 extern swd_proc_t swd_proc;
 
+#ifdef PLATFORM_HAS_SWCLK_WIDTH
+void swdptap_set_delay(unsigned int turnaround,
+		       unsigned int seq_in,
+		       unsigned int seq_in_parity_loop,
+		       unsigned int seq_in_parity_end,
+		       unsigned int seq_out,
+		       unsigned int seq_out_parity_loop,
+		       unsigned int seq_out_parity_end);
+#endif
+
 # if PC_HOSTED == 1
 int platform_swdptap_init(void);
 # else
