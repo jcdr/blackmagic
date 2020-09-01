@@ -26,6 +26,7 @@
 #include "cdcacm.h"
 #include "usbuart.h"
 #include "morse.h"
+#include "swdptap.h"
 
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/cm3/scb.h>
@@ -38,6 +39,8 @@
 
 static void adc_init(void);
 static void setup_vbus_irq(void);
+
+static unsigned int swclk_width = 0;
 
 /* Pins PB[7:5] are used to detect hardware revision.
  * 000 - Original production build.
@@ -203,6 +206,39 @@ bool platform_srst_get_val(void)
 	} else {
 		return gpio_get(SRST_PORT, SRST_PIN) == 0;
 	}
+}
+
+unsigned int platform_get_swclk_width(void)
+{
+	return swclk_width;
+}
+
+static unsigned int compute_delay(unsigned int cycle, unsigned int retard, unsigned int width) {
+	unsigned int delay = 0;
+	if (width > retard) {
+		delay = width - retard;
+	}
+	delay /= cycle;
+	return delay;
+}
+
+void platform_set_swclk_width(unsigned int width)
+{
+	swclk_width = width;
+	unsigned int turnaround = compute_delay(100, 500, width);
+	unsigned int seq_in = compute_delay(100, 800, width);
+	unsigned int seq_in_parity_loop = compute_delay(100, 800, width);
+	unsigned int seq_in_parity_end = compute_delay(100, 800, width);
+	unsigned int seq_out = compute_delay(100, 800, width);
+	unsigned int seq_out_parity_loop = compute_delay(100, 800, width);
+	unsigned int seq_out_parity_end = compute_delay(100, 500, width);
+	swdptap_set_delay(turnaround,
+			  seq_in,
+			  seq_in_parity_loop,
+			  seq_in_parity_end,
+			  seq_out,
+			  seq_out_parity_loop,
+			  seq_out_parity_end);
 }
 
 bool platform_target_get_power(void)
